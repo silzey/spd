@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>POS Checkout</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <!-- Add any other necessary stylesheets or meta tags here -->
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-white">
+
+  <!-- This is where your React app will be injected -->
+  <div id="root"></div>
+
+  <!-- React and Babel CDN for quick setup (use for GitHub Pages or simple HTML setup) -->
+  <script src="https://cdn.jsdelivr.net/npm/react@17.0.2/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@17.0.2/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.14.9/babel.min.js"></script>
+
+  <script type="text/babel">
+    // Your React code goes here, starting from the import statements to your entire app component
+
+    // React code you provided
+    const { useState, useEffect, useRef } = React;
+    const { Card, CardContent } = window['@radix-ui/react-card'];
+    const { Tabs, TabsList, TabsTrigger, TabsContent } = window['@radix-ui/react-tabs'];
+    const { ScrollArea } = window['@radix-ui/react-scroll-area'];
+    const { motion } = window['framer-motion'];
+
+    const categories = ["Flower", "Concentrates", "Vapes", "Edibles", "Topicals", "Gear"];
+    const cannabisImages = [
+      "https://www.kindpng.com/picc/m/124-1248523_marijuana-weed-cannabis-png-transparent-png.png",
+      "https://www.transparentpng.com/thumb/weed/Hf2zK5-weed-transparent.png",
+      "https://static.vecteezy.com/system/resources/previews/009/887/229/original/cannabis-transparent-background-free-png.png",
+      "https://upload.wikimedia.org/wikipedia/commons/4/4c/Cannabis_leaf_2.svg",
+    ];
+
+    const getRandomPrice = () => (Math.random() * 50 + 10).toFixed(2);
+
+    function SampleCard({ id, title, onAdd }) {
+      const price = getRandomPrice();
+      const image = cannabisImages[Math.floor(Math.random() * cannabisImages.length)];
+      return (
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full">
+          <Card className="bg-blue-100 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col">
+            <img src={image} alt="Cannabis" className="w-full h-[150px] object-cover" />
+            <CardContent className="p-4 flex-1 flex flex-col justify-between">
+              <div className="text-lg font-semibold text-blue-900 truncate">{title}</div>
+              <div className="text-sm text-blue-700 mt-1">THC: 25% | Hybrid</div>
+              <div className="text-md font-semibold text-blue-900 mt-2">${price}</div>
+              <button
+                onClick={() => onAdd({ id, title, price: parseFloat(price), image })}
+                className="mt-3 bg-blue-600 text-white rounded-md py-1 px-3 hover:bg-blue-700 transition"
+                aria-label={`Add ${title} to cart`}
+              >
+                Add to Cart
+              </button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      );
+    }
+
+    function POSLayout() {
+      const [selectedTab, setSelectedTab] = useState("catalog");
+      const [selectedCategory, setSelectedCategory] = useState(categories[0]);
+      const [cart, setCart] = useState({});
+      const [cartOpen, setCartOpen] = useState(false);
+      const [isCheckingOut, setIsCheckingOut] = useState(false);
+      const [checkoutData, setCheckoutData] = useState({ name: "", email: "" });
+      const [orderConfirmed, setOrderConfirmed] = useState(false);
+      const [orders, setOrders] = useState([]);
+      const [userProfile, setUserProfile] = useState({ name: "", email: "" });
+      const [editingProfile, setEditingProfile] = useState(false);
+
+      const canvasRef = useRef(null);
+
+      // Add product to cart
+      const addToCart = (product) => {
+        setCart((prev) => {
+          const newCart = { ...prev };
+          if (newCart[product.id]) {
+            newCart[product.id].quantity += 1;
+          } else {
+            newCart[product.id] = { ...product, quantity: 1 };
+          }
+          return newCart;
+        });
+        setCartOpen(true);
+      };
+
+      // Remove product from cart
+      const removeFromCart = (id) => {
+        setCart((prev) => {
+          const newCart = { ...prev };
+          delete newCart[id];
+          return newCart;
+        });
+      };
+
+      // Change quantity in cart
+      const changeQuantity = (id, delta) => {
+        setCart((prev) => {
+          const newCart = { ...prev };
+          if (!newCart[id]) return newCart;
+          newCart[id].quantity += delta;
+          if (newCart[id].quantity < 1) delete newCart[id];
+          return newCart;
+        });
+      };
+
+      // Handle checkout input changes
+      const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setCheckoutData((prev) => ({ ...prev, [name]: value }));
+      };
+
+      // Submit checkout form
+      const handleCheckoutSubmit = (e) => {
+        e.preventDefault();
+        if (!checkoutData.name.trim() || !checkoutData.email.trim()) {
+          alert("Please fill in all fields");
+          return;
+        }
+
+        // Save order to order history with timestamp
+        const newOrder = {
+          id: Date.now(),
+          customer: { ...checkoutData },
+          items: Object.values(cart),
+          total: Object.values(cart).reduce(
+            (acc, item) => acc + item.price * item.quantity,
+            0
+          ).toFixed(2),
+          date: new Date().toLocaleString(),
+        };
+        setOrders((prev) => [newOrder, ...prev]);
+
+        // Save user profile info (auto save on checkout)
+        setUserProfile({ name: checkoutData.name, email: checkoutData.email });
+
+        setOrderConfirmed(true);
+        setCart({});
+        setCartOpen(false);
+        setIsCheckingOut(false);
+      };
+
+      // User Profile input change
+      const handleProfileChange = (e) => {
+        const { name, value } = e.target;
+        setUserProfile((prev) => ({ ...prev, [name]: value }));
+      };
+
+      // Save profile changes
+      const saveProfile = () => {
+        if (!userProfile.name.trim() || !userProfile.email.trim()) {
+          alert("Please fill in all profile fields");
+          return;
+        }
+        setEditingProfile(false);
+      };
+
+      // Cancel profile editing
+      const cancelProfileEdit = () => {
+        setEditingProfile(false);
+      };
+
+      const subtotal = Object.values(cart).reduce(
+        (acc, item) => acc + item.price * item.quantity,
+        0
+      ).toFixed(2);
+
+      return (
+        <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col">
+          <header className="bg-blue-100 shadow-md p-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-blue-900">POS Checkout</h1>
+            <button
+              className="bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 min-w-[80px] text-center"
+              onClick={() => setCartOpen(true)}
+              aria-label="Open cart"
+            >
+              Cart ({Object.keys(cart).length})
+            </button>
+          </header>
+          <main className="flex-grow p-4 relative">
+            {/* Rest of your POSLayout goes here */}
+          </main>
+        </div>
+      );
+    }
+
+    // Rendering the component
+    ReactDOM.render(<POSLayout />, document.getElementById('root'));
+  </script>
+</body>
+</html>
