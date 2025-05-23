@@ -1,5 +1,5 @@
 {
-  "name": "your-project",
+  "name": "pos-product-recommendations",
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,6 @@
   "dependencies": {
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "framer-motion": "^10.12.16"
+    "react-dom": "latest"
   }
 }
